@@ -693,6 +693,11 @@
     reader.readAsText(file);
   }
 
+  // Cache hors-ligne quand l'app est hébergée (ignoré si le fichier est ouvert directement).
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
   // Démarrage
   if (state.draft) requestWakeLock();
   render();
