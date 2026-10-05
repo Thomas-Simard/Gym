@@ -17,13 +17,18 @@ Application autonome dans un seul fichier (`index.html`), sans dépendance exter
 | Développé militaire debout | 3 × 8-10 | 1 min 30 |
 | Curls biceps | 3 × 10-12 | 1 min 30 |
 
+## Mon matériel
+- **Barre et disques en livres** : barre vide de 20 lb. Pour les exercices à la barre, on entre le **poids total** et l'app affiche les disques à mettre **de chaque côté** (ex. 115 lb → 47,5 lb / côté).
+- **Haltères en kilos** : on entre le poids **d'un haltère**.
+- Réglable dans Réglages → Mon matériel, et par exercice (Barre / Haltères).
+
 ## Utilisation
 - Ouvrir https://thomas-simard.github.io/Gym/ sur le téléphone (une fois GitHub Pages activé), puis « Ajouter à l'écran d'accueil ». Après une première ouverture avec réseau, l'app est gardée en cache (`sw.js`) et s'ouvre sans réseau.
 - **Séance** : choisir A ou B (la prochaine est mise en avant). Poids et réps sont pré-remplis avec la dernière séance ; cocher ✓ puis « Lancer le repos ».
 - **Minuteur** : −30 s / +30 s / Reset ; bip, vibration (Android) et flash vert à zéro.
 - **Historique** : séances passées + records (1RM estimé, formule d'Epley).
 - **Programme** : modifier exercices, séries, réps et temps de repos.
-- **Réglages** : kg/lb, son, repos automatique, sauvegarde (fichier ou copier-coller).
+- **Réglages** : matériel (unités, poids de la barre), son, repos automatique, sauvegarde (fichier ou copier-coller).
 
 Les données sont stockées dans le `localStorage` du navigateur : faire une sauvegarde de temps en temps.
 

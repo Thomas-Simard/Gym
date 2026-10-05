@@ -92,7 +92,7 @@
   .pick .sub { font-size: .8rem; font-weight: 600; opacity: .85; }
 
   /* Exercices */
-  .ex-head { display: flex; align-items: center; gap: 10px; }
+  .ex-head { display: flex; align-items: flex-start; gap: 10px; }
   .ex-head .title { flex: 1; min-width: 0; }
   .ex-meta { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; align-items: center; }
   .thumb {
@@ -117,6 +117,9 @@
   .sets tr.done input { background: var(--ok-bg); border-color: var(--ok); }
   .check { width: 56px; height: 52px; padding: 0; font-size: 1.4rem; }
   tr.done .check { background: var(--ok); border-color: var(--ok); color: var(--ok-ink); }
+  .side { display: block; font-size: .72rem; color: var(--muted); text-align: center; margin-top: 2px; min-height: 1em; }
+  .seg.mini { display: inline-grid; padding: 2px; gap: 2px; border-radius: 10px; }
+  .seg.mini button { min-height: 32px; padding: 2px 10px; font-size: .8rem; }
   .rest-btn { width: 100%; min-height: 48px; background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
 
   /* Navigation */
@@ -167,8 +170,9 @@
   details summary::-webkit-details-marker { display: none; }
 
   /* Éditeur de programme */
-  .ex-edit { display: grid; grid-template-columns: 1fr 1fr 1fr 44px; gap: 6px; align-items: end; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .ex-edit { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; align-items: end; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
   .ex-edit .full { grid-column: 1 / -1; }
+  .ex-edit .span2 { grid-column: span 2; }
   .ex-edit label { margin-bottom: 2px; font-size: .75rem; }
   .ex-edit input, .ex-edit select { padding: 8px; min-height: 44px; font-size: .95rem; }
   .ex-edit button { min-height: 44px; padding: 0; }
@@ -263,18 +267,24 @@
   const PROGRAM_VERSION = 3;
   const DEFAULT_PROGRAM = [
     { id: 'A', name: 'Séance A', focus: 'Poussée / Bas du corps', exercises: [
-      { name: 'Développé couché à la barre', sets: 4, reps: '6-8', rest: 120 },
-      { name: 'Goblet Squat ou Squat barre', sets: 4, reps: '8-10', rest: 120 },
-      { name: 'Fentes arrière', sets: 3, reps: '10 / jambe', rest: 90 },
-      { name: 'Élévations latérales', sets: 3, reps: '12-15', rest: 90 },
+      { name: 'Développé couché à la barre', sets: 4, reps: '6-8', rest: 120, equip: 'barre' },
+      { name: 'Goblet Squat ou Squat barre', sets: 4, reps: '8-10', rest: 120, equip: 'barre' },
+      { name: 'Fentes arrière', sets: 3, reps: '10 / jambe', rest: 90, equip: 'halteres' },
+      { name: 'Élévations latérales', sets: 3, reps: '12-15', rest: 90, equip: 'halteres' },
     ]},
     { id: 'B', name: 'Séance B', focus: 'Tirage / Chaîne postérieure', exercises: [
-      { name: 'Soulevé de terre jambes tendues à la barre (RDL)', sets: 4, reps: '8-10', rest: 120 },
-      { name: 'Rowing buste penché à la barre', sets: 4, reps: '8-10', rest: 120 },
-      { name: 'Développé militaire debout', sets: 3, reps: '8-10', rest: 90 },
-      { name: 'Curls biceps', sets: 3, reps: '10-12', rest: 90 },
+      { name: 'Soulevé de terre jambes tendues à la barre (RDL)', sets: 4, reps: '8-10', rest: 120, equip: 'barre' },
+      { name: 'Rowing buste penché à la barre', sets: 4, reps: '8-10', rest: 120, equip: 'barre' },
+      { name: 'Développé militaire debout', sets: 3, reps: '8-10', rest: 90, equip: 'halteres' },
+      { name: 'Curls biceps', sets: 3, reps: '10-12', rest: 90, equip: 'halteres' },
     ]},
   ];
+  // Matériel : la barre se charge en disques (lb), les haltères sont en kg.
+  const EQUIP = { barre: 'Barre', halteres: 'Haltères' };
+  const defaultEquip = (name) => {
+    for (const d of DEFAULT_PROGRAM) for (const e of d.exercises) if (e.name.trim().toLowerCase() === String(name).trim().toLowerCase()) return e.equip;
+    return /barre/i.test(name) ? 'barre' : 'halteres';
+  };
   const REST_CHOICES = [60, 90, 120, 150, 180, 240];
   const DEFAULT_REST = 90;
 
@@ -295,7 +305,7 @@
 
   function load() {
     const base = { programVersion: PROGRAM_VERSION, program: freshProgram(), history: [], draft: null,
-      settings: { unit: 'kg', sound: true, autoRest: false } };
+      settings: { unit: 'kg', barUnit: 'lb', dbUnit: 'kg', barWeight: 20, sound: true, autoRest: false } };
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return base;
@@ -308,6 +318,9 @@
         st.draft = null;
         if (!st.history.length) st.settings.unit = 'kg';
       }
+      // Données d'avant le choix barre/haltères : on déduit le matériel du nom.
+      st.program.forEach(d => d.exercises.forEach(e => { if (!e.equip) e.equip = defaultEquip(e.name); }));
+      if (st.draft) st.draft.exercises.forEach(e => { if (!e.equip) e.equip = defaultEquip(e.name); });
       return st;
     } catch (e) { return base; }
   }
@@ -329,6 +342,19 @@
   const key = (name) => String(name).trim().toLowerCase();
   const topReps = (reps) => { const m = String(reps).match(/(\d+)\s*(?:-\s*(\d+))?/); return m ? Number(m[2] || m[1]) : null; };
   const restOf = (ex) => Number(ex.rest) || DEFAULT_REST;
+  const unitOf = (ex) => ex.equip === 'barre' ? state.settings.barUnit : ex.equip === 'halteres' ? state.settings.dbUnit : state.settings.unit;
+  // Unité d'un exercice enregistré (les anciennes séances utilisaient l'unité globale).
+  const savedUnit = (e) => e.unit || state.settings.unit;
+  const toKg = (w, u) => u === 'lb' ? w * 0.45359237 : w;
+  const barW = () => num(state.settings.barWeight) || 0;
+  // Disques à mettre de chaque côté de la barre pour un poids total.
+  function sideText(total) {
+    const t = num(total);
+    if (t == null) return '';
+    const side = (t - barW()) / 2;
+    if (side < 0) return 'moins que la barre';
+    return side === 0 ? 'barre seule' : `${fmtNum(side)} / côté`;
+  }
 
   function toast(msg) {
     const t = document.getElementById('toast');
@@ -381,7 +407,7 @@
       const ex = s.exercises.find(e => key(e.name) === key(name));
       if (ex) {
         const sets = ex.sets.filter(x => x.done);
-        if (sets.length) return { date: s.end, sets };
+        if (sets.length) return { date: s.end, sets, unit: savedUnit(ex) };
       }
     }
     return null;
@@ -390,8 +416,11 @@
   function progressionHint(ex, last) {
     const top = topReps(ex.reps);
     if (!last || !top || last.sets.length < ex.target.sets) return '';
-    return last.sets.every(s => (num(s.r) || 0) >= top)
-      ? `↑ ${top} réps partout la dernière fois : augmente un peu la charge.` : '';
+    if (!last.sets.every(s => (num(s.r) || 0) >= top)) return '';
+    const step = ex.equip === 'barre'
+      ? (state.settings.barUnit === 'lb' ? 'essaie +5 lb (2,5 lb de chaque côté)' : 'essaie +2,5 kg (1,25 kg de chaque côté)')
+      : (state.settings.dbUnit === 'kg' ? 'prends les haltères suivants (+1 à 2 kg)' : 'prends les haltères suivants (+2,5 à 5 lb)');
+    return `↑ ${top} réps partout la dernière fois : ${step}.`;
   }
 
   function nextDayId() {
@@ -445,7 +474,6 @@
 
   function renderWorkout() {
     const w = state.draft;
-    const unit = state.settings.unit;
     const doneCount = w.exercises.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
     const total = w.exercises.reduce((a, e) => a + e.sets.length, 0);
     $app.innerHTML = `
@@ -461,6 +489,8 @@
           // Dernière série cochée : c'est sous elle qu'on propose de lancer le repos.
           let lastDone = -1; ex.sets.forEach((s, j) => { if (s.done) lastDone = j; });
           const allDone = ex.sets.length && ex.sets.every(s => s.done);
+          const unit = unitOf(ex);
+          const isBar = ex.equip === 'barre';
           return `
           <div class="card">
             <div class="ex-head">
@@ -472,17 +502,21 @@
                   <span class="tag rest">⏱ Repos ${fmtRest(rest)}</span>
                   ${exInfo(ex.name) ? `<button class="link" data-action="show-ex" data-name="${esc(ex.name)}">Comment faire ?</button>` : ''}
                 </div>
+                <div class="seg mini" style="margin-top:8px" role="group" aria-label="Matériel">
+                  ${Object.entries(EQUIP).map(([k, label]) => `<button data-action="equip" data-ex="${i}" data-equip="${k}" class="${ex.equip === k ? 'active' : ''}">${label}</button>`).join('')}
+                </div>
               </div>
             </div>
-            ${last ? `<p class="last">Dernière fois (${fmtShortDate(last.date)}) : ${last.sets.map(s => `${s.w ? fmtNum(num(s.w)) + ' ' + unit + ' × ' : ''}${esc(s.r)}`).join(' · ')}</p>` : '<p class="last">Première fois : choisis une charge que tu peux soulever proprement.</p>'}
+            ${last ? `<p class="last">Dernière fois (${fmtShortDate(last.date)}) : ${last.sets.map(s => `${s.w ? fmtNum(num(s.w)) + ' ' + last.unit + ' × ' : ''}${esc(s.r)}`).join(' · ')}</p>` : '<p class="last">Première fois : choisis une charge que tu peux soulever proprement.</p>'}
+            ${isBar ? `<p class="last">Barre de ${fmtNum(barW())} ${unit} : entre le poids total, l'app calcule les disques par côté.</p>` : ''}
             ${hint ? `<p class="hint">${hint}</p>` : ''}
             <table class="sets">
-              <thead><tr><th>#</th><th>Poids (${unit})</th><th>Réps</th><th></th></tr></thead>
+              <thead><tr><th>#</th><th>${isBar ? `Total (${unit})` : `Par haltère (${unit})`}</th><th>Réps</th><th></th></tr></thead>
               <tbody>
                 ${ex.sets.map((s, j) => `
                   <tr class="${s.done ? 'done' : ''}">
                     <td class="num">${j + 1}</td>
-                    <td><input inputmode="decimal" data-field="w" data-ex="${i}" data-set="${j}" value="${esc(s.w)}" placeholder="—" aria-label="Poids série ${j + 1}"></td>
+                    <td><input inputmode="decimal" data-field="w" data-ex="${i}" data-set="${j}" value="${esc(s.w)}" placeholder="—" aria-label="Poids série ${j + 1} en ${unit}">${isBar ? `<span class="side" id="side-${i}-${j}">${sideText(s.w)}</span>` : ''}</td>
                     <td><input inputmode="numeric" data-field="r" data-ex="${i}" data-set="${j}" value="${esc(s.r)}" placeholder="${topReps(ex.reps) || '—'}" aria-label="Répétitions série ${j + 1}"></td>
                     <td class="chk"><button class="check" data-action="toggle-set" data-ex="${i}" data-set="${j}" aria-label="Série ${j + 1} terminée">✓</button></td>
                   </tr>
@@ -508,11 +542,10 @@
   }
 
   function sessionVolume(s) {
-    return s.exercises.reduce((a, e) => a + e.sets.filter(x => x.done).reduce((b, x) => b + (num(x.w) || 0) * (num(x.r) || 0), 0), 0);
+    return s.exercises.reduce((a, e) => a + e.sets.filter(x => x.done).reduce((b, x) => b + toKg(num(x.w) || 0, savedUnit(e)) * (num(x.r) || 0), 0), 0);
   }
 
   function renderHistory() {
-    const unit = state.settings.unit;
     let body;
     if (historyMode === 'seances') {
       body = state.history.length ? state.history.slice().reverse().map(s => `
@@ -521,7 +554,7 @@
             <div class="row between">
               <div>
                 <h3>${esc(s.dayName)} <span class="muted small">· ${esc(s.focus || '')}</span></h3>
-                <p class="muted small">${fmtDate(s.end)} · ${fmtDur(s.end - s.start)} · ${Math.round(sessionVolume(s)).toLocaleString('fr-CA')} ${unit} soulevés</p>
+                <p class="muted small">${fmtDate(s.end)} · ${fmtDur(s.end - s.start)} · ≈ ${Math.round(sessionVolume(s)).toLocaleString('fr-CA')} kg soulevés</p>
               </div>
               <span class="muted">▾</span>
             </div>
@@ -529,7 +562,7 @@
           <ul class="plain small">
             ${s.exercises.map(e => {
               const d = e.sets.filter(x => x.done);
-              return `<li><span>${esc(e.name)}</span><span class="muted" style="text-align:right">${d.length ? d.map(x => `${x.w ? fmtNum(num(x.w)) + '×' : ''}${esc(x.r)}`).join(' · ') : '—'}</span></li>`;
+              return `<li><span>${esc(e.name)}</span><span class="muted" style="text-align:right">${d.length ? d.map(x => `${x.w ? fmtNum(num(x.w)) + '×' : ''}${esc(x.r)}`).join(' · ') + (d.some(x => x.w) ? ` <span class="small">(${savedUnit(e)})</span>` : '') : '—'}</span></li>`;
             }).join('')}
           </ul>
           ${s.notes ? `<p class="small" style="margin-top:8px">📝 ${esc(s.notes)}</p>` : ''}
@@ -541,15 +574,16 @@
         const w = num(x.w), r = num(x.r);
         if (!w || !r) return;
         const est = w * (1 + r / 30); // Formule d'Epley
-        const k = key(e.name);
+        const u = savedUnit(e);
+        const k = key(e.name) + '|' + u;
         if (!recs[k] || w > recs[k].w || (w === recs[k].w && r > recs[k].r)) {
-          recs[k] = { name: e.name, w, r, date: s.end, est: Math.max(est, recs[k]?.est || 0) };
+          recs[k] = { name: e.name, unit: u, w, r, date: s.end, est: Math.max(est, recs[k]?.est || 0) };
         } else if (est > recs[k].est) recs[k].est = est;
       })));
       const list = Object.values(recs).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
       body = list.length ? `<div class="card"><ul class="plain">
         ${list.map(r => `<li><span>${esc(r.name)}<br><span class="muted small">${fmtDate(r.date)}</span></span>
-          <span style="text-align:right"><strong>${fmtNum(r.w)} ${unit} × ${fmtNum(r.r)}</strong><br><span class="muted small">1RM est. ≈ ${fmtNum(Math.round(r.est))} ${unit}</span></span></li>`).join('')}
+          <span style="text-align:right"><strong>${fmtNum(r.w)} ${r.unit} × ${fmtNum(r.r)}</strong><br><span class="muted small">1RM est. ≈ ${fmtNum(Math.round(r.est))} ${r.unit}</span></span></li>`).join('')}
       </ul></div>` : '<p class="muted">Les records apparaîtront après ta première séance avec des poids.</p>';
     }
     $app.innerHTML = `
@@ -582,6 +616,9 @@
                 <div><label>Repos</label><select data-prog="ex-rest" data-day="${di}" data-ex="${ei}">
                   ${[...new Set([...REST_CHOICES, restOf(e)])].sort((a, b) => a - b).map(v => `<option value="${v}" ${restOf(e) === v ? 'selected' : ''}>${fmtClock(v)}</option>`).join('')}
                 </select></div>
+                <div class="span2"><label>Matériel</label><select data-prog="ex-equip" data-day="${di}" data-ex="${ei}">
+                  ${Object.entries(EQUIP).map(([k, label]) => `<option value="${k}" ${e.equip === k ? 'selected' : ''}>${label} (${k === 'barre' ? state.settings.barUnit : state.settings.dbUnit})</option>`).join('')}
+                </select></div>
                 <button class="btn-danger" data-action="del-ex" data-day="${di}" data-ex="${ei}" aria-label="Supprimer">✕</button>
               </div>`).join('')}
             <button class="btn-sm" style="margin-top:10px" data-action="add-ex" data-day="${di}">+ Ajouter un exercice</button>
@@ -596,11 +633,23 @@
       <div class="stack">
         <h1>Réglages</h1>
         <div class="card stack">
+          <h3>Mon matériel</h3>
           <div>
-            <label>Unité de poids</label>
+            <label>Barre et disques</label>
             <div class="seg">
-              <button data-action="unit" data-unit="kg" class="${s.unit === 'kg' ? 'active' : ''}">Kilos (kg)</button>
-              <button data-action="unit" data-unit="lb" class="${s.unit === 'lb' ? 'active' : ''}">Livres (lb)</button>
+              <button data-action="unit" data-target="barUnit" data-unit="lb" class="${s.barUnit === 'lb' ? 'active' : ''}">Livres (lb)</button>
+              <button data-action="unit" data-target="barUnit" data-unit="kg" class="${s.barUnit === 'kg' ? 'active' : ''}">Kilos (kg)</button>
+            </div>
+          </div>
+          <div>
+            <label for="barWeight">Poids de la barre vide (${s.barUnit})</label>
+            <input id="barWeight" data-setting="barWeight" inputmode="decimal" value="${esc(s.barWeight)}">
+          </div>
+          <div>
+            <label>Haltères</label>
+            <div class="seg">
+              <button data-action="unit" data-target="dbUnit" data-unit="kg" class="${s.dbUnit === 'kg' ? 'active' : ''}">Kilos (kg)</button>
+              <button data-action="unit" data-target="dbUnit" data-unit="lb" class="${s.dbUnit === 'lb' ? 'active' : ''}">Livres (lb)</button>
             </div>
           </div>
           <div class="row between">
@@ -640,12 +689,14 @@
       exercises: d.exercises.map(e => {
         // Pré-remplissage avec la dernière séance enregistrée de cet exercice.
         const last = lastPerf(e.name);
+        const equip = e.equip || defaultEquip(e.name);
+        const sameUnit = last && last.unit === unitOf({ equip });
         const n = Math.max(1, Number(e.sets) || 1);
         return {
-          name: e.name, reps: e.reps, rest: restOf(e), target: { sets: n, reps: e.reps },
+          name: e.name, reps: e.reps, rest: restOf(e), equip, target: { sets: n, reps: e.reps },
           sets: Array.from({ length: n }, (_, j) => {
             const ref = last && (last.sets[j] || last.sets[last.sets.length - 1]);
-            return { w: ref ? ref.w || '' : '', r: ref ? ref.r || '' : '', done: false };
+            return { w: ref && sameUnit ? ref.w || '' : '', r: ref ? ref.r || '' : '', done: false };
           }),
         };
       }),
@@ -673,6 +724,7 @@
     const done = w.exercises.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
     if (!done && !(await ask('Aucune série cochée. Enregistrer quand même ?', 'Enregistrer'))) return;
     w.end = Date.now();
+    w.exercises.forEach(e => { e.unit = unitOf(e); });
     state.history.push(w);
     state.draft = null;
     stopTimer(); releaseWakeLock(); save();
@@ -802,7 +854,7 @@
           state.history = state.history.filter(s => s.id !== b.dataset.id); save(); render();
         }
         break;
-      case 'add-ex': state.program[di].exercises.push({ id: uid(), name: 'Nouvel exercice', sets: 3, reps: '10-12', rest: DEFAULT_REST }); save(); render(); break;
+      case 'add-ex': state.program[di].exercises.push({ id: uid(), name: 'Nouvel exercice', sets: 3, reps: '10-12', rest: DEFAULT_REST, equip: 'halteres' }); save(); render(); break;
       case 'del-ex':
         if (await ask(`Retirer « ${state.program[di].exercises[i].name} » du programme ?`, 'Retirer', true)) {
           state.program[di].exercises.splice(i, 1); save(); render();
@@ -813,7 +865,8 @@
           state.program = freshProgram(); save(); render(); toast('Programme rétabli');
         }
         break;
-      case 'unit': state.settings.unit = b.dataset.unit; save(); render(); break;
+      case 'unit': state.settings[b.dataset.target] = b.dataset.unit; save(); render(); break;
+      case 'equip': state.draft.exercises[i].equip = b.dataset.equip; save(); render(); break;
       case 'sound': state.settings.sound = !state.settings.sound; save(); render(); break;
       case 'auto-rest': state.settings.autoRest = !state.settings.autoRest; save(); render(); break;
       case 'export': exportData(); break;
@@ -842,9 +895,14 @@
     const t = e.target;
     if (t.dataset.field && state.draft) {
       if (t.dataset.field === 'notes') state.draft.notes = t.value;
-      else state.draft.exercises[t.dataset.ex].sets[t.dataset.set][t.dataset.field] = t.value.trim();
+      else {
+        state.draft.exercises[t.dataset.ex].sets[t.dataset.set][t.dataset.field] = t.value.trim();
+        const side = document.getElementById(`side-${t.dataset.ex}-${t.dataset.set}`);
+        if (side && t.dataset.field === 'w') side.textContent = sideText(t.value);
+      }
       save(); return;
     }
+    if (t.dataset.setting === 'barWeight') { state.settings.barWeight = num(t.value) ?? 0; save(); return; }
     if (t.dataset.prog) {
       const d = state.program[t.dataset.day];
       const ex = d.exercises[t.dataset.ex];
@@ -855,6 +913,7 @@
         case 'ex-sets': ex.sets = Math.min(10, Math.max(1, parseInt(t.value, 10) || 1)); break;
         case 'ex-reps': ex.reps = t.value; break;
         case 'ex-rest': ex.rest = Number(t.value); break;
+        case 'ex-equip': ex.equip = t.value; break;
       }
       save();
     }
