@@ -2,18 +2,18 @@
 
 Application autonome dans un seul fichier (`index.html`), sans dépendance externe : elle fonctionne hors-ligne.
 
-## Programme (prise de masse, haltères) — 2 séances alternées
+## Programme (prise de masse, barre + banc + haltères) — 2 séances alternées
 | Séance A — Poussée / Bas du corps | Séries × réps | Repos |
 |---|---|---|
-| Goblet Squat | 4 × 8-10 | 2 min |
-| Développé couché ou incliné | 4 × 8-10 | 2 min |
-| Fentes arrière | 3 × 10 / jambe | 1 min 30 |
-| Élévations latérales | 3 × 12-15 | 1 min 30 |
+| Développé couché à la barre | 4 × 6-8 | 2 min |
+| Goblet Squat ou Squat barre | 4 × 8-10 | 2 min |
+| Fentes arrière (haltères) | 3 × 10 / jambe | 1 min 30 |
+| Élévations latérales (haltères) | 3 × 12-15 | 1 min 30 |
 
 | Séance B — Tirage / Chaîne postérieure | Séries × réps | Repos |
 |---|---|---|
-| Soulevé de terre jambes tendues (RDL) | 4 × 8-10 | 2 min |
-| Rowing à un bras | 4 × 8-10 | 2 min |
+| Soulevé de terre jambes tendues à la barre (RDL) | 4 × 8-10 | 2 min |
+| Rowing buste penché à la barre | 4 × 8-10 | 2 min |
 | Développé militaire debout | 3 × 8-10 | 1 min 30 |
 | Curls biceps | 3 × 10-12 | 1 min 30 |
 
