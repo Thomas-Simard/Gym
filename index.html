@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Gym">
 <title>Gym Sous-Sol</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <style>
   :root {
     color-scheme: dark;
@@ -594,6 +597,7 @@
           <button data-action="hist-mode" data-mode="records" class="${historyMode === 'records' ? 'active' : ''}">Records</button>
         </div>
         ${body}
+        ${backupCard()}
       </div>`;
   }
 
@@ -625,6 +629,24 @@
           </div>`).join('')}
         <button class="btn-block btn-danger" data-action="reset-program">Rétablir le programme A/B d'origine</button>
       </div>`;
+  }
+
+  // Exporter / importer l'historique (et le programme) : utilisé dans Historique et Réglages.
+  function backupCard() {
+    return `
+        <div class="card stack">
+          <h3>Exporter / importer l'historique</h3>
+          <p class="muted small">Tes séances restent uniquement sur cet appareil. Exporte-les de temps en temps (et avant de changer de téléphone) ; importe le fichier pour tout récupérer. Le fichier contient aussi ton programme et tes réglages.</p>
+          <button class="btn-block" data-action="export">⬇️ Exporter l'historique (fichier .json)</button>
+          <button class="btn-block" data-action="copy-backup">📋 Copier l'historique (texte)</button>
+          <button class="btn-block" data-action="import">⬆️ Importer un fichier d'historique</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+          <details>
+            <summary class="small muted">Ou coller le texte d'un historique copié</summary>
+            <textarea id="pasteBackup" class="mono" rows="4" placeholder='{"program": …, "history": …}' style="margin-top:8px"></textarea>
+            <button class="btn-block" style="margin-top:8px" data-action="import-paste">Importer le texte collé</button>
+          </details>
+        </div>`;
   }
 
   function renderSettings() {
@@ -662,19 +684,7 @@
           </div>
           <button class="btn-block" data-action="test-signal">🔔 Tester le signal de fin de repos</button>
         </div>
-        <div class="card stack">
-          <h3>Sauvegarde</h3>
-          <p class="muted small">Les données restent uniquement sur cet appareil (navigateur). Fais une copie de sécurité de temps en temps.</p>
-          <button class="btn-block" data-action="export">⬇️ Télécharger une sauvegarde (.json)</button>
-          <button class="btn-block" data-action="copy-backup">📋 Copier la sauvegarde</button>
-          <button class="btn-block" data-action="import">⬆️ Importer un fichier de sauvegarde</button>
-          <input type="file" id="importFile" accept="application/json,.json" hidden>
-          <details>
-            <summary class="small muted">Ou coller le texte d'une sauvegarde</summary>
-            <textarea id="pasteBackup" class="mono" rows="4" placeholder='{"program": …, "history": …}' style="margin-top:8px"></textarea>
-            <button class="btn-block" style="margin-top:8px" data-action="import-paste">Importer le texte collé</button>
-          </details>
-        </div>
+        ${backupCard()}
         <button class="btn-block btn-danger" data-action="wipe">Effacer toutes les données</button>
         <p class="muted small" style="text-align:center">${state.history.length} séance(s) enregistrée(s)</p>
       </div>`;
@@ -873,7 +883,7 @@
       case 'import': document.getElementById('importFile').click(); break;
       case 'copy-backup': {
         const txt = backupJson();
-        try { await navigator.clipboard.writeText(txt); toast('Sauvegarde copiée'); }
+        try { await navigator.clipboard.writeText(txt); toast('Historique copié'); }
         catch (err) {
           const ta = document.getElementById('pasteBackup');
           ta.value = txt; ta.closest('details').open = true; ta.select();
@@ -932,7 +942,7 @@
     const blob = new Blob([backupJson()], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `gym-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `gym-historique-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
@@ -950,7 +960,7 @@
     if (!(await ask(`Importer ${data.history.length} séance(s) ? Les données actuelles seront remplacées.`, 'Importer', true))) return;
     state = { programVersion: PROGRAM_VERSION, program: data.program, history: data.history, draft: null,
       settings: { ...state.settings, ...(data.settings || {}) } };
-    save(); render(); toast('Sauvegarde importée');
+    save(); render(); toast('Historique importé');
   }
 
   // Cache hors-ligne quand l'app est hébergée (ignoré si le fichier est ouvert directement).

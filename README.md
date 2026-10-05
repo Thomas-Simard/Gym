@@ -22,6 +22,15 @@ Application autonome dans un seul fichier (`index.html`), sans dépendance exter
 - **Haltères en kilos** : on entre le poids **d'un haltère**.
 - Réglable dans Réglages → Mon matériel, et par exercice (Barre / Haltères).
 
+## Installer comme une app sur le téléphone
+1. Activer GitHub Pages : Settings → Pages → Deploy from a branch → `main` / `(root)` → Save.
+2. Ouvrir https://thomas-simard.github.io/Gym/ **avec du réseau**.
+3. iPhone (Safari) : Partager → « Sur l'écran d'accueil ». Android (Chrome) : menu ⋮ → « Installer l'application ».
+4. L'app s'ouvre ensuite en plein écran, avec son icône, même sans réseau.
+
+## Exporter / importer l'historique
+Onglet **Historique** (ou Réglages) → « Exporter l'historique » crée un fichier `gym-historique-AAAA-MM-JJ.json`. « Importer un fichier d'historique » le recharge (remplace les données actuelles). Il existe aussi une version copier/coller en texte.
+
 ## Utilisation
 - Ouvrir https://thomas-simard.github.io/Gym/ sur le téléphone (une fois GitHub Pages activé), puis « Ajouter à l'écran d'accueil ». Après une première ouverture avec réseau, l'app est gardée en cache (`sw.js`) et s'ouvre sans réseau.
 - **Séance** : choisir A ou B (la prochaine est mise en avant). Poids et réps sont pré-remplis avec la dernière séance ; cocher ✓ puis « Lancer le repos ».
