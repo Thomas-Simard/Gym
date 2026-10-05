@@ -1,6 +1,6 @@
 // Garde l'application en cache pour qu'elle s'ouvre sans réseau.
 // Stratégie : réponse immédiate depuis le cache, mise à jour en arrière-plan.
-const CACHE = 'gym-sous-sol-v1';
+const CACHE = 'gym-sous-sol-v2';
 const FILES = ['./', './index.html'];
 
 self.addEventListener('install', (e) => {
