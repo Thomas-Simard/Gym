@@ -10,3 +10,6 @@ Application autonome dans un seul fichier (`index.html`), sans dépendance exter
 - **Réglages** : lb/kg, temps de repos, export/import JSON.
 
 Les données sont stockées dans le `localStorage` du navigateur : exporter régulièrement une sauvegarde.
+
+## Crédits
+Photos des exercices : [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (domaine public, Unlicense), intégrées directement dans `index.html` pour fonctionner hors-ligne.
