@@ -11,6 +11,7 @@
 <title>Gym Sous-Sol</title>
 <style>
   :root {
+    color-scheme: dark;
     --bg: #0f1115;
     --surface: #181b22;
     --surface-2: #222631;
@@ -131,6 +132,19 @@
   .ex-edit .full { grid-column: 1 / -1; }
   .ex-edit input { padding: 8px; min-height: 40px; font-size: .95rem; }
   .ex-edit button { min-height: 40px; padding: 0; }
+  .modal {
+    position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.6);
+    display: flex; align-items: flex-end; justify-content: center; padding: 16px;
+    padding-bottom: calc(16px + var(--safe-b));
+  }
+  .modal[hidden] { display: none; }
+  .modal .sheet {
+    width: 100%; max-width: 480px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal .sheet p { font-size: 1.05rem; }
+  .modal .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  textarea.mono { font: .8rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }
   .toast {
     position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 20;
     background: var(--ok); color: #04210f; font-weight: 700; padding: 10px 16px;
@@ -160,6 +174,16 @@
   <button data-tab="programme"><span>📝</span>Programme</button>
   <button data-tab="reglages"><span>⚙️</span>Réglages</button>
 </nav>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modalMsg">
+    <p id="modalMsg"></p>
+    <div class="actions">
+      <button id="modalNo">Annuler</button>
+      <button id="modalYes" class="btn-primary">Confirmer</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -239,6 +263,22 @@
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  // Fenêtre de confirmation intégrée à la page (les boîtes natives sont bloquées dans certains navigateurs intégrés).
+  function ask(msg, yesLabel = 'Confirmer', danger = false) {
+    const m = document.getElementById('modal');
+    const yes = document.getElementById('modalYes'), no = document.getElementById('modalNo');
+    document.getElementById('modalMsg').textContent = msg;
+    yes.textContent = yesLabel;
+    yes.className = danger ? 'btn-danger' : 'btn-primary';
+    m.hidden = false; yes.focus();
+    return new Promise(resolve => {
+      const done = (v) => { m.hidden = true; yes.onclick = no.onclick = m.onclick = null; resolve(v); };
+      yes.onclick = () => done(true);
+      no.onclick = () => done(false);
+      m.onclick = (e) => { if (e.target === m) done(false); };
+    });
   }
 
   // Dernière performance enregistrée pour un exercice (par nom).
@@ -471,9 +511,15 @@
         <div class="card stack">
           <h3>Sauvegarde</h3>
           <p class="muted small">Les données restent uniquement sur cet appareil (navigateur). Exporte régulièrement une copie de sécurité.</p>
-          <button class="btn-block" data-action="export">⬇️ Exporter mes données (.json)</button>
-          <button class="btn-block" data-action="import">⬆️ Importer une sauvegarde</button>
+          <button class="btn-block" data-action="export">⬇️ Télécharger une sauvegarde (.json)</button>
+          <button class="btn-block" data-action="copy-backup">📋 Copier la sauvegarde</button>
+          <button class="btn-block" data-action="import">⬆️ Importer un fichier de sauvegarde</button>
           <input type="file" id="importFile" accept="application/json,.json" hidden>
+          <details>
+            <summary class="small muted">Ou coller le texte d'une sauvegarde</summary>
+            <textarea id="pasteBackup" class="mono" rows="4" placeholder='{"program": …, "history": …}' style="margin-top:8px"></textarea>
+            <button class="btn-block" style="margin-top:8px" data-action="import-paste">Importer le texte collé</button>
+          </details>
         </div>
         <button class="btn-block btn-danger" data-action="wipe">Effacer toutes les données</button>
         <p class="muted small" style="text-align:center">${state.history.length} séance(s) enregistrée(s)</p>
@@ -512,10 +558,10 @@
     save(); render();
   }
 
-  function finishWorkout() {
+  async function finishWorkout() {
     const w = state.draft;
     const done = w.exercises.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
-    if (!done && !confirm('Aucune série cochée. Enregistrer quand même ?')) return;
+    if (!done && !(await ask('Aucune série cochée. Enregistrer quand même ?', 'Enregistrer'))) return;
     w.end = Date.now();
     state.history.push(w);
     state.draft = null;
@@ -587,14 +633,14 @@
     tab = b.dataset.tab; render(); window.scrollTo(0, 0);
   });
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-action]');
     if (!b) return;
     const a = b.dataset.action;
     const i = Number(b.dataset.ex), j = Number(b.dataset.set), di = Number(b.dataset.day);
     switch (a) {
       case 'start':
-        if (state.draft && !confirm('Une séance est déjà en cours. La remplacer ?')) return;
+        if (state.draft && !(await ask('Une séance est déjà en cours. La remplacer ?', 'Remplacer', true))) return;
         startWorkout(b.dataset.day); break;
       case 'toggle-set': toggleSet(i, j); break;
       case 'add-set': {
@@ -605,7 +651,7 @@
       case 'remove-set': state.draft.exercises[i].sets.pop(); save(); render(); break;
       case 'finish': finishWorkout(); break;
       case 'cancel':
-        if (confirm('Abandonner cette séance ? Les séries saisies seront perdues.')) {
+        if (await ask('Abandonner cette séance ? Les séries saisies seront perdues.', 'Abandonner', true)) {
           state.draft = null; stopTimer(); releaseWakeLock(); save(); render();
         }
         break;
@@ -613,18 +659,18 @@
       case 'timer-stop': stopTimer(); break;
       case 'hist-mode': historyMode = b.dataset.mode; render(); break;
       case 'delete-session':
-        if (confirm('Supprimer définitivement cette séance ?')) {
+        if (await ask('Supprimer définitivement cette séance ?', 'Supprimer', true)) {
           state.history = state.history.filter(s => s.id !== b.dataset.id); save(); render();
         }
         break;
       case 'add-ex': state.program[di].exercises.push({ id: uid(), name: 'Nouvel exercice', sets: 3, reps: '10-12' }); save(); render(); break;
       case 'del-ex':
-        if (confirm(`Retirer « ${state.program[di].exercises[i].name} » du programme ?`)) {
+        if (await ask(`Retirer « ${state.program[di].exercises[i].name} » du programme ?`, 'Retirer', true)) {
           state.program[di].exercises.splice(i, 1); save(); render();
         }
         break;
       case 'reset-program':
-        if (confirm('Rétablir le programme d\'origine ? Ton historique est conservé.')) {
+        if (await ask('Rétablir le programme d\'origine ? Ton historique est conservé.', 'Rétablir')) {
           state.program = freshProgram(); save(); render(); toast('Programme rétabli');
         }
         break;
@@ -632,8 +678,19 @@
       case 'sound': state.settings.sound = !state.settings.sound; save(); render(); break;
       case 'export': exportData(); break;
       case 'import': document.getElementById('importFile').click(); break;
+      case 'copy-backup': {
+        const txt = backupJson();
+        try { await navigator.clipboard.writeText(txt); toast('Sauvegarde copiée'); }
+        catch (err) {
+          const ta = document.getElementById('pasteBackup');
+          ta.value = txt; ta.closest('details').open = true; ta.select();
+          toast('Sélectionne le texte et copie-le');
+        }
+        break;
+      }
+      case 'import-paste': importText(document.getElementById('pasteBackup').value); break;
       case 'wipe':
-        if (confirm('Effacer TOUT (historique, programme, réglages) ? Action irréversible.')) {
+        if (await ask('Effacer TOUT (historique, programme, réglages) ? Action irréversible.', 'Tout effacer', true)) {
           try { localStorage.removeItem(STORAGE_KEY); } catch (err) {}
           state = load(); stopTimer(); render(); toast('Données effacées');
         }
@@ -669,8 +726,11 @@
   });
 
   // ---------- Export / Import ----------
+  function backupJson() {
+    return JSON.stringify({ app: 'gym-sous-sol', version: 1, exportedAt: new Date().toISOString(), ...state, draft: null }, null, 2);
+  }
   function exportData() {
-    const data = JSON.stringify({ app: 'gym-sous-sol', version: 1, exportedAt: new Date().toISOString(), ...state, draft: null }, null, 2);
+    const data = backupJson();
     const blob = new Blob([data], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -680,17 +740,19 @@
   }
   function importData(file) {
     const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result);
-        if (!Array.isArray(data.history) || !Array.isArray(data.program)) throw new Error('format');
-        if (!confirm(`Importer ${data.history.length} séance(s) ? Les données actuelles seront remplacées.`)) return;
-        state = { program: data.program, history: data.history, draft: null,
-          settings: { ...state.settings, ...(data.settings || {}) } };
-        save(); render(); toast('Sauvegarde importée');
-      } catch (err) { alert('Fichier invalide : ce n\'est pas une sauvegarde de cette application.'); }
-    };
+    reader.onload = () => importText(reader.result);
     reader.readAsText(file);
+  }
+  async function importText(text) {
+    let data;
+    try {
+      data = JSON.parse(text);
+      if (!Array.isArray(data.history) || !Array.isArray(data.program)) throw new Error('format');
+    } catch (err) { toast('Texte invalide : ce n\'est pas une sauvegarde de cette app'); return; }
+    if (!(await ask(`Importer ${data.history.length} séance(s) ? Les données actuelles seront remplacées.`, 'Importer', true))) return;
+    state = { program: data.program, history: data.history, draft: null,
+      settings: { ...state.settings, ...(data.settings || {}) } };
+    save(); render(); toast('Sauvegarde importée');
   }
 
   // Cache hors-ligne quand l'app est hébergée (ignoré si le fichier est ouvert directement).
