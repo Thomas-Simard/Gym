@@ -18,9 +18,10 @@ Application autonome dans un seul fichier (`index.html`), sans dépendance exter
 | Curls biceps | 3 × 10-12 | 1 min 30 |
 
 ## Mon matériel
-- **Barre et disques en livres** : barre vide de 20 lb. Pour les exercices à la barre, on entre le **poids total** et l'app affiche les disques à mettre **de chaque côté** (ex. 115 lb → 47,5 lb / côté).
+- **Disques de la barre en kilos**, **barre vide de 20 lb** (≈ 9,07 kg). Pour les exercices à la barre, on entre les disques **d'un seul côté** ; l'app calcule le total (2 × côté + barre).
 - **Haltères en kilos** : on entre le poids **d'un haltère**.
-- Réglable dans Réglages → Mon matériel, et par exercice (Barre / Haltères).
+- **kg ou lb au choix** : sur chaque exercice, le bouton kg | lb change l'unité de saisie ; l'équivalent dans l'autre unité s'affiche sous chaque case. Le choix est mémorisé par exercice.
+- Réglable dans Réglages → Mon matériel (unité des disques, poids et unité de la barre vide, unité des haltères).
 
 ## Installer comme une app sur le téléphone
 1. Activer GitHub Pages : Settings → Pages → Deploy from a branch → `main` / `(root)` → Save.

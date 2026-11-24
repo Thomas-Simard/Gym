@@ -308,7 +308,7 @@
 
   function load() {
     const base = { programVersion: PROGRAM_VERSION, program: freshProgram(), history: [], draft: null,
-      settings: { unit: 'kg', barUnit: 'lb', dbUnit: 'kg', barWeight: 20, sound: true, autoRest: false } };
+      settings: { unit: 'kg', barUnit: 'kg', dbUnit: 'kg', barWeight: 20, barWeightUnit: 'lb', sound: true, autoRest: false, platesV2: true } };
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return base;
@@ -320,6 +320,12 @@
         st.program = freshProgram();
         st.draft = null;
         if (!st.history.length) st.settings.unit = 'kg';
+      }
+      // Avant : disques supposés en lb. Le matériel réel = disques en kg, barre vide de 20 lb.
+      if (!(data.settings && data.settings.platesV2)) {
+        st.settings.barUnit = 'kg';
+        st.settings.barWeightUnit = 'lb';
+        st.settings.platesV2 = true;
       }
       // Données d'avant le choix barre/haltères : on déduit le matériel du nom.
       st.program.forEach(d => d.exercises.forEach(e => { if (!e.equip) e.equip = defaultEquip(e.name); }));
@@ -349,14 +355,29 @@
   // Unité d'un exercice enregistré (les anciennes séances utilisaient l'unité globale).
   const savedUnit = (e) => e.unit || state.settings.unit;
   const toKg = (w, u) => u === 'lb' ? w * 0.45359237 : w;
-  const barW = () => num(state.settings.barWeight) || 0;
-  // Disques à mettre de chaque côté de la barre pour un poids total.
-  function sideText(total) {
-    const t = num(total);
-    if (t == null) return '';
-    const side = (t - barW()) / 2;
-    if (side < 0) return 'moins que la barre';
-    return side === 0 ? 'barre seule' : `${fmtNum(side)} / côté`;
+  const fromKg = (w, u) => u === 'lb' ? w / 0.45359237 : w;
+  // Poids de la barre vide, converti dans l'unité des disques.
+  const barW = () => fromKg(toKg(num(state.settings.barWeight) || 0, state.settings.barWeightUnit || state.settings.barUnit), state.settings.barUnit);
+  const round1 = (n) => Math.round(n * 10) / 10;
+  // Barre : on saisit les disques d'UN côté, le total = 2 × côté + barre.
+  const totalFromSide = (side) => { const p = num(side); return p == null ? '' : String(round1(2 * p + barW())); };
+  const sideOf = (s) => s.p != null && s.p !== '' ? s.p : (num(s.w) != null ? String(Math.max(0, Math.round((num(s.w) - barW()) / 2 * 4) / 4)) : '');
+  const other = (u) => u === 'kg' ? 'lb' : 'kg';
+  const conv = (v, from, to) => from === to ? v : fromKg(toKg(v, from), to);
+  // Unité de saisie choisie pour un exercice (kg ou lb) ; les valeurs restent stockées dans l'unité du matériel.
+  const dispUnit = (ex) => ex.inUnit || unitOf(ex);
+  const shown = (val, ex) => { const n = num(val); if (n == null) return ''; const d = dispUnit(ex); return d === unitOf(ex) ? String(val) : String(round1(conv(n, unitOf(ex), d))); };
+  const stored = (val, ex) => { const n = num(val); if (n == null) return ''; const d = dispUnit(ex); return d === unitOf(ex) ? String(val).trim() : String(Math.round(conv(n, d, unitOf(ex)) * 100) / 100); };
+  // Ligne sous la case : équivalent dans l'autre unité (+ total pour la barre).
+  function convText(s, ex) {
+    const d = dispUnit(ex), c = unitOf(ex), o = other(d);
+    if (ex.equip === 'barre') {
+      const side = num(sideOf(s)), tot = num(s.w);
+      if (side == null) return '';
+      return `≈ ${fmtNum(round1(conv(side, c, o)))} ${o}/côté · total ${fmtNum(round1(conv(tot, c, d)))} ${d}`;
+    }
+    const w = num(s.w);
+    return w == null ? '' : `≈ ${fmtNum(round1(conv(w, c, o)))} ${o}`;
   }
 
   function toast(msg) {
@@ -420,9 +441,10 @@
     const top = topReps(ex.reps);
     if (!last || !top || last.sets.length < ex.target.sets) return '';
     if (!last.sets.every(s => (num(s.r) || 0) >= top)) return '';
+    const d = dispUnit(ex);
     const step = ex.equip === 'barre'
-      ? (state.settings.barUnit === 'lb' ? 'essaie +5 lb (2,5 lb de chaque côté)' : 'essaie +2,5 kg (1,25 kg de chaque côté)')
-      : (state.settings.dbUnit === 'kg' ? 'prends les haltères suivants (+1 à 2 kg)' : 'prends les haltères suivants (+2,5 à 5 lb)');
+      ? (d === 'lb' ? 'ajoute 2,5 lb de chaque côté (+5 lb au total)' : 'ajoute 1,25 kg de chaque côté (+2,5 kg au total)')
+      : (d === 'kg' ? 'prends les haltères suivants (+1 à 2 kg)' : 'prends les haltères suivants (+2,5 à 5 lb)');
     return `↑ ${top} réps partout la dernière fois : ${step}.`;
   }
 
@@ -492,8 +514,10 @@
           // Dernière série cochée : c'est sous elle qu'on propose de lancer le repos.
           let lastDone = -1; ex.sets.forEach((s, j) => { if (s.done) lastDone = j; });
           const allDone = ex.sets.length && ex.sets.every(s => s.done);
-          const unit = unitOf(ex);
+          const unit = dispUnit(ex);
           const isBar = ex.equip === 'barre';
+          // Valeur d'une ancienne séance, convertie dans l'unité de saisie.
+          const lastVal = (v) => fmtNum(round1(conv(num(v), last.unit, unit)));
           return `
           <div class="card">
             <div class="ex-head">
@@ -505,21 +529,28 @@
                   <span class="tag rest">⏱ Repos ${fmtRest(rest)}</span>
                   ${exInfo(ex.name) ? `<button class="link" data-action="show-ex" data-name="${esc(ex.name)}">Comment faire ?</button>` : ''}
                 </div>
-                <div class="seg mini" style="margin-top:8px" role="group" aria-label="Matériel">
-                  ${Object.entries(EQUIP).map(([k, label]) => `<button data-action="equip" data-ex="${i}" data-equip="${k}" class="${ex.equip === k ? 'active' : ''}">${label}</button>`).join('')}
+                <div class="row wrap" style="gap:6px;margin-top:8px">
+                  <div class="seg mini" role="group" aria-label="Matériel">
+                    ${Object.entries(EQUIP).map(([k, label]) => `<button data-action="equip" data-ex="${i}" data-equip="${k}" class="${ex.equip === k ? 'active' : ''}">${label}</button>`).join('')}
+                  </div>
+                  <div class="seg mini" role="group" aria-label="Unité de saisie">
+                    ${['kg', 'lb'].map(u => `<button data-action="inunit" data-ex="${i}" data-unit="${u}" class="${unit === u ? 'active' : ''}">${u}</button>`).join('')}
+                  </div>
                 </div>
               </div>
             </div>
-            ${last ? `<p class="last">Dernière fois (${fmtShortDate(last.date)}) : ${last.sets.map(s => `${s.w ? fmtNum(num(s.w)) + ' ' + last.unit + ' × ' : ''}${esc(s.r)}`).join(' · ')}</p>` : '<p class="last">Première fois : choisis une charge que tu peux soulever proprement.</p>'}
-            ${isBar ? `<p class="last">Barre de ${fmtNum(barW())} ${unit} : entre le poids total, l'app calcule les disques par côté.</p>` : ''}
+            ${last ? `<p class="last">Dernière fois (${fmtShortDate(last.date)}) : ${last.sets.map(s => `${s.w ? (isBar && s.p != null && s.p !== '' ? lastVal(s.p) + ' ' + unit + '/côté' : lastVal(s.w) + ' ' + unit) + ' × ' : ''}${esc(s.r)}`).join(' · ')}</p>` : '<p class="last">Première fois : choisis une charge que tu peux soulever proprement.</p>'}
+            ${isBar ? `<p class="last">Entre les disques d'<strong>un seul côté</strong> (${unit}). L'app ajoute l'autre côté et la barre (${fmtNum(num(state.settings.barWeight))} ${state.settings.barWeightUnit || unit}).</p>` : ''}
             ${hint ? `<p class="hint">${hint}</p>` : ''}
             <table class="sets">
-              <thead><tr><th>#</th><th>${isBar ? `Total (${unit})` : `Par haltère (${unit})`}</th><th>Réps</th><th></th></tr></thead>
+              <thead><tr><th>#</th><th>${isBar ? `Disques / côté (${unit})` : `Par haltère (${unit})`}</th><th>Réps</th><th></th></tr></thead>
               <tbody>
                 ${ex.sets.map((s, j) => `
                   <tr class="${s.done ? 'done' : ''}">
                     <td class="num">${j + 1}</td>
-                    <td><input inputmode="decimal" data-field="w" data-ex="${i}" data-set="${j}" value="${esc(s.w)}" placeholder="—" aria-label="Poids série ${j + 1} en ${unit}">${isBar ? `<span class="side" id="side-${i}-${j}">${sideText(s.w)}</span>` : ''}</td>
+                    <td>${isBar
+                      ? `<input inputmode="decimal" data-field="p" data-ex="${i}" data-set="${j}" value="${esc(shown(sideOf(s), ex))}" placeholder="—" aria-label="Disques d'un côté, série ${j + 1}, en ${unit}">`
+                      : `<input inputmode="decimal" data-field="w" data-ex="${i}" data-set="${j}" value="${esc(shown(s.w, ex))}" placeholder="—" aria-label="Poids série ${j + 1} en ${unit}">`}<span class="side" id="side-${i}-${j}">${convText(s, ex)}</span></td>
                     <td><input inputmode="numeric" data-field="r" data-ex="${i}" data-set="${j}" value="${esc(s.r)}" placeholder="${topReps(ex.reps) || '—'}" aria-label="Répétitions série ${j + 1}"></td>
                     <td class="chk"><button class="check" data-action="toggle-set" data-ex="${i}" data-set="${j}" aria-label="Série ${j + 1} terminée">✓</button></td>
                   </tr>
@@ -621,7 +652,7 @@
                   ${[...new Set([...REST_CHOICES, restOf(e)])].sort((a, b) => a - b).map(v => `<option value="${v}" ${restOf(e) === v ? 'selected' : ''}>${fmtClock(v)}</option>`).join('')}
                 </select></div>
                 <div class="span2"><label>Matériel</label><select data-prog="ex-equip" data-day="${di}" data-ex="${ei}">
-                  ${Object.entries(EQUIP).map(([k, label]) => `<option value="${k}" ${e.equip === k ? 'selected' : ''}>${label} (${k === 'barre' ? state.settings.barUnit : state.settings.dbUnit})</option>`).join('')}
+                  ${Object.entries(EQUIP).map(([k, label]) => `<option value="${k}" ${e.equip === k ? 'selected' : ''}>${label} (${k === 'barre' ? 'disques en ' + state.settings.barUnit : state.settings.dbUnit})</option>`).join('')}
                 </select></div>
                 <button class="btn-danger" data-action="del-ex" data-day="${di}" data-ex="${ei}" aria-label="Supprimer">✕</button>
               </div>`).join('')}
@@ -657,15 +688,22 @@
         <div class="card stack">
           <h3>Mon matériel</h3>
           <div>
-            <label>Barre et disques</label>
+            <label>Disques de la barre</label>
             <div class="seg">
-              <button data-action="unit" data-target="barUnit" data-unit="lb" class="${s.barUnit === 'lb' ? 'active' : ''}">Livres (lb)</button>
               <button data-action="unit" data-target="barUnit" data-unit="kg" class="${s.barUnit === 'kg' ? 'active' : ''}">Kilos (kg)</button>
+              <button data-action="unit" data-target="barUnit" data-unit="lb" class="${s.barUnit === 'lb' ? 'active' : ''}">Livres (lb)</button>
             </div>
           </div>
           <div>
-            <label for="barWeight">Poids de la barre vide (${s.barUnit})</label>
-            <input id="barWeight" data-setting="barWeight" inputmode="decimal" value="${esc(s.barWeight)}">
+            <label for="barWeight">Poids de la barre vide</label>
+            <div class="row">
+              <input id="barWeight" data-setting="barWeight" inputmode="decimal" value="${esc(s.barWeight)}" style="flex:1">
+              <div class="seg" style="flex:1">
+                <button data-action="unit" data-target="barWeightUnit" data-unit="lb" class="${(s.barWeightUnit || s.barUnit) === 'lb' ? 'active' : ''}">lb</button>
+                <button data-action="unit" data-target="barWeightUnit" data-unit="kg" class="${(s.barWeightUnit || s.barUnit) === 'kg' ? 'active' : ''}">kg</button>
+              </div>
+            </div>
+            <p class="small muted" style="margin-top:4px">= ${fmtNum(round1(barW()))} ${s.barUnit} dans les calculs</p>
           </div>
           <div>
             <label>Haltères</label>
@@ -703,10 +741,10 @@
         const sameUnit = last && last.unit === unitOf({ equip });
         const n = Math.max(1, Number(e.sets) || 1);
         return {
-          name: e.name, reps: e.reps, rest: restOf(e), equip, target: { sets: n, reps: e.reps },
+          name: e.name, reps: e.reps, rest: restOf(e), equip, inUnit: (state.settings.inUnits || {})[key(e.name)], target: { sets: n, reps: e.reps },
           sets: Array.from({ length: n }, (_, j) => {
             const ref = last && (last.sets[j] || last.sets[last.sets.length - 1]);
-            return { w: ref && sameUnit ? ref.w || '' : '', r: ref ? ref.r || '' : '', done: false };
+            return { w: ref && sameUnit ? ref.w || '' : '', p: ref && sameUnit ? ref.p : undefined, r: ref ? ref.r || '' : '', done: false };
           }),
         };
       }),
@@ -719,7 +757,7 @@
     const s = ex.sets[j];
     if (!s.done) {
       const prev = ex.sets[j - 1];
-      if (!s.w && prev) s.w = prev.w;
+      if (!s.w && prev) { s.w = prev.w; if (prev.p != null) s.p = prev.p; }
       if (!s.r) s.r = (prev && prev.r) || String(topReps(ex.reps) || '');
       s.done = true;
       if (state.settings.autoRest) startTimer(restOf(ex), ex.name);
@@ -839,7 +877,7 @@
       case 'add-set': {
         const sets = state.draft.exercises[i].sets;
         const last = sets[sets.length - 1] || {};
-        sets.push({ w: last.w || '', r: last.r || '', done: false }); save(); render(); break;
+        sets.push({ w: last.w || '', p: last.p, r: last.r || '', done: false }); save(); render(); break;
       }
       case 'remove-set': state.draft.exercises[i].sets.pop(); save(); render(); break;
       case 'finish': finishWorkout(); break;
@@ -877,6 +915,12 @@
         break;
       case 'unit': state.settings[b.dataset.target] = b.dataset.unit; save(); render(); break;
       case 'equip': state.draft.exercises[i].equip = b.dataset.equip; save(); render(); break;
+      case 'inunit': {
+        const ex = state.draft.exercises[i];
+        ex.inUnit = b.dataset.unit;
+        state.settings.inUnits = { ...(state.settings.inUnits || {}), [key(ex.name)]: b.dataset.unit };
+        save(); render(); break;
+      }
       case 'sound': state.settings.sound = !state.settings.sound; save(); render(); break;
       case 'auto-rest': state.settings.autoRest = !state.settings.autoRest; save(); render(); break;
       case 'export': exportData(); break;
@@ -906,9 +950,13 @@
     if (t.dataset.field && state.draft) {
       if (t.dataset.field === 'notes') state.draft.notes = t.value;
       else {
-        state.draft.exercises[t.dataset.ex].sets[t.dataset.set][t.dataset.field] = t.value.trim();
+        const ex = state.draft.exercises[t.dataset.ex];
+        const set = ex.sets[t.dataset.set];
+        const f = t.dataset.field;
+        set[f] = (f === 'w' || f === 'p') ? stored(t.value, ex) : t.value.trim();
+        if (f === 'p') set.w = totalFromSide(set.p);
         const side = document.getElementById(`side-${t.dataset.ex}-${t.dataset.set}`);
-        if (side && t.dataset.field === 'w') side.textContent = sideText(t.value);
+        if (side && (f === 'w' || f === 'p')) side.textContent = convText(set, ex);
       }
       save(); return;
     }
