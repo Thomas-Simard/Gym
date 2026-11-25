@@ -2,20 +2,22 @@
 
 Application autonome dans un seul fichier (`index.html`), sans dépendance externe : elle fonctionne hors-ligne.
 
-## Programme (prise de masse, barre + banc + haltères) — 2 séances alternées
-| Séance A — Poussée / Bas du corps | Séries × réps | Repos |
-|---|---|---|
-| Développé couché à la barre | 4 × 6-8 | 2 min |
-| Goblet Squat ou Squat barre | 4 × 8-10 | 2 min |
-| Fentes arrière (haltères) | 3 × 10 / jambe | 1 min 30 |
-| Élévations latérales (haltères) | 3 × 12-15 | 1 min 30 |
+## Programme (prise de masse) — 2 séances alternées, exercices polyarticulaires uniquement
+Une seule installation de barre par séance (jamais de changement de hauteur en cours de séance) ; le reste aux haltères.
 
-| Séance B — Tirage / Chaîne postérieure | Séries × réps | Repos |
+| Séance A — Squat barre + haltères | Séries × réps | Repos |
 |---|---|---|
-| Soulevé de terre jambes tendues à la barre (RDL) | 4 × 8-10 | 2 min |
-| Rowing buste penché à la barre | 4 × 8-10 | 2 min |
-| Développé militaire debout | 3 × 8-10 | 1 min 30 |
-| Curls biceps | 3 × 10-12 | 1 min 30 |
+| Squat à la barre (barre haute) | 4 × 6-8 | 2 min |
+| Développé incliné aux haltères | 4 × 8-10 | 2 min |
+| Rowing à un bras (haltère) | 4 × 8-10 / bras | 2 min |
+| Fentes arrière (haltères) | 3 × 10 / jambe | 1 min 30 |
+
+| Séance B — Développé couché barre + haltères | Séries × réps | Repos |
+|---|---|---|
+| Développé couché à la barre (barre basse) | 4 × 6-8 | 2 min |
+| Soulevé de terre jambes tendues aux haltères (RDL) | 4 × 8-10 | 2 min |
+| Développé militaire debout (haltères) | 3 × 8-10 | 1 min 30 |
+| Rowing buste penché aux haltères | 3 × 8-10 | 1 min 30 |
 
 ## Mon matériel
 - **Disques de la barre en kilos**, **barre vide de 20 lb** (≈ 9,07 kg). Pour les exercices à la barre, on entre les disques **d'un seul côté** ; l'app calcule le total (2 × côté + barre).
